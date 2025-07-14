@@ -1,5 +1,6 @@
 # cp-kafka-connect-oracle-xstream
 cp-kafka-connect build for oracle xstream to run on M1 host
+
 (issues running plain vanilla cp-kafka-connect image here - https://gist.github.com/nav-nandan/67e303481d5f75c0bf7f53d8ad6366ee)
 
 ## Download Oracle XStream CDC Source Connector
