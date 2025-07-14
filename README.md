@@ -31,5 +31,15 @@ docker-compose up -d
 ## Test Connector Plugin Installation
 
 ```
-
+curl -X GET http://localhost:8083/connector-plugins | jq
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   803  100   803    0     0  22655      0 --:--:-- --:--:-- --:--:-- 22305
+[
+  {
+    "class": "io.confluent.connect.oracle.xstream.cdc.OracleXStreamSourceConnector",
+    "type": "source",
+    "version": "1.1.0"
+  }
+]
 ```
