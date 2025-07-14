@@ -3,9 +3,15 @@ cp-kafka-connect build for oracle xstream to run on M1 host
 
 ## Download Oracle XStream CDC Source Connector
 ```
+mkdir connectors
+
 wget https://hub-downloads.confluent.io/api/plugins/confluentinc/kafka-connect-oracle-xstream-cdc-source/versions/1.1.0/confluentinc-kafka-connect-oracle-xstream-cdc-source-1.1.0.zip
 
 unzip confluentinc-kafka-connect-oracle-xstream-cdc-source-1.1.0.zip
+
+mv -i confluentinc-kafka-connect-oracle-xstream-cdc-source-1.1.0 connectors
+
+rm confluentinc-kafka-connect-oracle-xstream-cdc-source-1.1.0.zip
 ```
 
 ## Download Oracle Instant Client (aarch64) Bundle
