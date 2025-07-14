@@ -151,4 +151,5 @@ services:
 volumes:
   oracle_data:
   minio_data:
+  cluster-id-volume:
   confluent-data:
