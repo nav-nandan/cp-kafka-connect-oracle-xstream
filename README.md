@@ -28,6 +28,9 @@ docker push navnandan/cp-kafka-connect-oracle-oci-client:7.9.2
 docker-compose up -d
 ```
 
+## Oracle 19c Database Prerequisites
+Follow Container Database (CDB) steps to enable Oracle XStream, set up users etc. - https://docs.confluent.io/kafka-connectors/oracle-xstream-cdc-source/current/prereqs-validation.html
+
 ## Test Connector Plugin Installation
 
 ```
