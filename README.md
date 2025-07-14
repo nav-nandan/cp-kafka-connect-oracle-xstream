@@ -15,8 +15,9 @@ rm confluentinc-kafka-connect-oracle-xstream-cdc-source-1.1.0.zip
 ```
 
 ## Download Oracle Instant Client (aarch64) Bundle
-- Consolidated bundle with necessary files - https://drive.google.com/file/d/10VR_xBGDoFB0uSFbpdmbb0zgodbg6zUh/view
-- Move ojdbc8.jar and xstreams.jar to the above connector directory (```confluentinc-kafka-connect-oracle-xstream-cdc-source-1.1.0/lib```)
+- Download consolidated bundle with necessary library files - https://drive.google.com/file/d/10VR_xBGDoFB0uSFbpdmbb0zgodbg6zUh/view
+- ```unzip instantclient-basic-linux-arm64.zip```
+- Move ojdbc8.jar and xstreams.jar to the above connector directory (```connectors/confluentinc-kafka-connect-oracle-xstream-cdc-source-1.1.0/lib```)
 
 ## Steps to Build cp-kafka-connect Docker Image for Oracle XStream CDC Source Connector
 Rebuild cp-kafka-connect image with required libs and jars from Oracle Instant Client (aarch64) for Oracle XStream CDC Source Connector to successfully connect to remote Oracle 19c using Oracle JDBC OCI Driver.
