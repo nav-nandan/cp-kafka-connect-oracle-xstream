@@ -98,7 +98,7 @@ services:
       - broker-0
 
   connect:
-    image: navnandan/cp-kafka-connect:7.9.2
+    image: navnandan/cp-kafka-connect-oracle-oci-client:7.9.2
     container_name: connect
     hostname: connect
     restart: always
