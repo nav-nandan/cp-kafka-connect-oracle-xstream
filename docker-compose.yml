@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  oracle-db:
+    image: oracle/database:19.3.0-ee
+    container_name: oracle19c
+    ports:
+      - "1521:1521"
+      - "5500:5500"
+    environment:
+      - ORACLE_SID=ORCLCDB
+      - ORACLE_PDB=ORCLPDB1
+      - ORACLE_PWD=your_oracle_password
+      - ORACLE_CHARACTERSET=AL32UTF8
+    volumes:
+      - ./oracle_data:/opt/oracle/oradata
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000" # MinIO API port
+      - "9001:9001" # MinIO Console port
+    volumes:
+      - ./minio_data:/data # Persist MinIO data
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+    command: server /data --console-address ":9001"
+
+  # --- KRaft Controllers (Metadata Quorum) ---
+  kraft-controller-0:
+    image: confluentinc/cp-server:latest
+    container_name: kraft-controller-0
+    hostname: kraft-controller-0
+    restart: always
+    environment:
+      KAFKA_NODE_ID: 1000 # Unique ID for this controller
+      CLUSTER_ID: "4kG3iB-T_eG0g6mOa0aEBA" # Replace with your desired 22-character base64-encoded ID
+      KAFKA_PROCESS_ROLES: controller # This node is only a controller
+      KAFKA_LISTENERS: CONTROLLER://kraft-controller-0:9093 # Internal listener for controller communication
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1000@kraft-controller-0:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kraft-metadata # Dedicated storage for controller metadata
+      KAFKA_LOG_RETENTION_BYTES: 1073741824 # 1GB for metadata logs
+      KAFKA_LOG_RETENTION_HOURS: 168 # 7 days retention
+      CONFLUENT_SUPPORT_METRICS_ENABLE: "false" # Disable for dev setup
+      KAFKA_METADATA_LOG_DIR: /tmp/kraft-metadata # Explicitly define metadata log dir for clarity
+      KAFKA_METADATA_LOG_SEGMENT_BYTES: 104857600 # 100MB segment size for metadata topic
+    volumes:
+      - ./confluent-data/kraft-controller-0:/tmp/kraft-metadata
+
+  # --- Kafka Brokers ---
+  broker-0:
+    image: confluentinc/cp-server:latest
+    container_name: broker-0
+    hostname: broker-0
+    restart: always
+    ports:
+      - "19092:19092" # Client connections to broker-0
+    environment:
+      KAFKA_NODE_ID: 0 # Unique ID for this broker
+      CLUSTER_ID: "4kG3iB-T_eG0g6mOa0aEBA" # Replace with your desired 22-character base64-encoded ID
+      KAFKA_PROCESS_ROLES: broker # This node is only a broker
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-0:19092 # How external clients connect (map to a single host for simplicity)
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1000@kraft-controller-0:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kafka-data # Dedicated storage for broker data
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # Recommended for 3 brokers
+      KAFKA_GROUP_INITIAL_REPLICATION_FACTOR: 1 # Recommended
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1 # Recommended
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1 # Recommended (N/2 + 1)
+      CONFLUENT_SUPPORT_METRICS_ENABLE: "false"
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1 # Confluent internal topics
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - ./confluent-data/broker-0:/tmp/kafka-data
+      - type: volume
+        source: cluster-id-volume
+        target: /tmp/cluster_id.txt
+        read_only: true
+    depends_on:
+      - kraft-controller-0
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:latest
+    container_name: schema-registry
+    hostname: schema-registry
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://broker-0:19092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1 # Adjust for your broker count
+    depends_on:
+      - broker-0
+
+  connect:
+    image: navnandan/cp-kafka-connect:7.9.2
+    container_name: connect
+    hostname: connect
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      # DOCKER_DEFAULT_PLATFORM: linux/amd64 # use to follow Host OS architecture
+      CONNECT_BOOTSTRAP_SERVERS: PLAINTEXT://broker-0:19092
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: connect-cluster
+      CONNECT_CONFIG_STORAGE_TOPIC: connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: connect-status
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1 # Adjust for your broker count
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1 # Adjust for your broker count
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1 # Adjust for your broker count
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components,/usr/share/connectors
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_INTERNAL_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+    command:
+      - bash
+      - -c
+      - |
+        echo "Installing Confluent Hub connectors..."
+        confluent-hub install --no-prompt confluentinc/kafka-connect-s3:latest
+        sleep 10
+
+        # confluent-hub install --no-prompt confluentinc/kafka-connect-oracle-xstream-cdc-source:latest # manual install from zip needed
+        # sleep 10
+
+        #
+        echo "Launching Kafka Connect worker"
+        /etc/confluent/docker/run &
+        #
+        sleep infinity
+    volumes:
+      - ./connectors:/usr/share/connectors # place ojdbc8.jar, xstreams.jar under lib folder of connector to avoid oracle oci driver classpath referencing issues
+    depends_on:
+      - schema-registry
+
+volumes:
+  oracle_data:
+  minio_data:
+  confluent-data:
