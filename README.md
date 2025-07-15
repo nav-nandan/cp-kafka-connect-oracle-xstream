@@ -1,9 +1,18 @@
 # cp-kafka-connect-oracle-xstream
 cp-kafka-connect build for oracle xstream to run on M1 host
 
-(issues running plain vanilla cp-kafka-connect image via docker-compose on M1 listed here - https://gist.github.com/nav-nandan/67e303481d5f75c0bf7f53d8ad6366ee)
+(Issues running plain vanilla cp-kafka-connect image for Oracle XStream CDC Source Connector via docker-compose on M1 listed here - https://gist.github.com/nav-nandan/67e303481d5f75c0bf7f53d8ad6366ee)
+
+## Prepare Working Directory
+
+```
+git clone https://github.com/nav-nandan/cp-kafka-connect-oracle-xstream.git
+
+cd cp-kafka-connect-oracle-xstream
+```
 
 ## Download Oracle XStream CDC Source Connector
+
 ```
 mkdir connectors
 
@@ -25,8 +34,6 @@ rm confluentinc-kafka-connect-oracle-xstream-cdc-source-1.1.0.zip
 Rebuild cp-kafka-connect image with required libs and jars from Oracle Instant Client (aarch64) for Oracle XStream CDC Source Connector to successfully connect to remote Oracle 19c using Oracle JDBC OCI Driver.
 
 ```
-git clone https://github.com/nav-nandan/cp-kafka-connect-oracle-xstream.git
-cd cp-kafka-connect-oracle-xstream
 docker build -t navnandan/cp-kafka-connect-oracle-oci-client:7.9.2 .
 docker push navnandan/cp-kafka-connect-oracle-oci-client:7.9.2
 ```
